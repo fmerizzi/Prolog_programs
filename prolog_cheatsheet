@@ -1,0 +1,251 @@
+%useful variable predicates 
+var(term)
+nonvar(term)
+number(term)
+ground(term)
+
+% If then else call predicate example 
+if_then_else(Cond,Goal1,Goal2):-
+    call(Cond),!,
+    call(Goal1).
+
+if_then_else(Cond,Goal1,Goal2):-
+    call(Goal2).
+
+p(b).
+q(a).
+z(c).
+
+% bagof example
+w(X):- r(X),e(X).
+
+r(a).
+r(b).
+e(a).
+e(b).
+
+?-bagof(X,w(X),L)
+
+% findall example
+w(X):- r(X),e(X).
+
+r(a).
+r(b).
+e(a).
+e(b).
+
+?-findall(X,w(X),L)
+
+% conjunction findall example
+r(a).
+r(b).
+e(a).
+e(b).
+
+?-findall(X,(r(X),e(X)),L)
+
+% given a predicate, list of all head values or goal values
+findall(X,clause(a(X),Y),S)
+findall(Y,clause(a(X),Y),S)
+
+% run a query that count the amont of solution to a predicate
+?-findall(X,clause(a(X),Y),S),
+length(S,N)
+
+% clause example 
+% clause check for a clause in the DB that unifies Head and Body
+% Head must be defined, Body can be a variable 
+% for facts body is unified with true 
+% does backtrack for multiple answers 
+w(X):- r(X),e(X).
+
+r(a).
+r(b).
+e(a).
+e(b).
+
+?-trace,clause(r(a),Body)
+
+% I want to find all the predicates with the solution inside
+findall(a(X),a(X),S)
+
+% check that for some findall results a predicate holds
+a(b,c).
+a(c,d).
+ver(c).
+ver(d).
+
+verify(Y) :- 
+    findall(Y,a(X,Y),S),
+    check(S).
+
+check([]):-!.
+check([A|L]):-
+    check(L),
+    % we could also execute something here trough call(a(A))
+    ver(A).
+
+?- verify(Y)
+
+%quantization example
+a(b,c).
+a(c,d).
+
+findall(X,a(X,Y),S).
+bagof((X,a(X,Y),S).
+bagof((X,Y),a(X,Y),S)
+
+% findall is equivalent to 
+setof(X, Y^father(X,Y), S).
+
+% VANILLA meta interpretes 
+solve(true) :-!.
+solve( (A,B) ):-
+    !,
+    solve(A),
+    solve(B).
+solve(A):-
+    clause(A,B),
+    solve(B).
+
+a:- b,c.
+b:-d.
+d.
+c.
+
+  
+%step count meta interpreter
+solve(true,0) :-!.
+solve( (A,B) ,N):-
+    !,
+    solve(B,N1),
+    solve(A,N2),
+    N is N1 + N2.
+solve(A,N):-
+    clause(A,B),
+    solve(B,N1),
+    N is N1 +1.
+
+%Certainity probabilistic metainterpreter 
+solve(true,100):-!.
+solve((A,B),CF):-!,
+    solve(A,CFA),
+    solve(B,CFB),
+    min(CFA,CFB,CF).
+solve(A,CFA):-
+    rule(A,B,CF),
+    solve(B,CFB),
+    CFA is ((CFB*CF)/100).
+
+min(A,B,A):-
+    A<B,!.
+min(_,B,B).
+
+
+%rule(a, (b,c), 10).
+rule(a, d, 90).
+rule(b,true, 100).
+rule(c,true, 50).
+rule(d,true, 100).
+
+
+%askable Metainterpreter
+prove(true) :- !.
+prove((B, Bs)) :- !,
+    prove(B),
+    prove(Bs).
+prove(H) :-
+    clause(H, B),
+    prove(B).
+prove(H) :-
+    askable(H),
+    writeln(H),
+    read(Answer),
+	Answer == yes.
+
+
+good_pet(X) :- bird(X), small(X).
+good_pet(X) :- cuddly(X), yellow(X).
+
+bird(X) :- has_feathers(X), tweets(X).
+
+yellow(tweety).
+
+askable(tweets(_)).
+askable(small(_)).
+askable(cuddly(_)).
+askable(has_feathers(_)).
+
+% print steps metainterpreter
+solve(true) :-!.
+solve( (A,B) ):-
+    !,
+    solve(A),
+    solve(B).
+solve(A):-
+    write('solving subgoal : '),
+    write(A),nl,
+    clause(A,B),
+    write('selecting rule : '),
+    write(B),nl,
+    solve(B).
+
+
+% LDAP prolog example
+
+:- use_module(library(pita)).
+
+:- if(current_predicate(use_rendering/1)).
+:- use_rendering(c3).
+:- endif.
+
+:- pita.
+
+:- begin_lpad.
+
+sneezing(X):0.7 ; null:0.3 :- flu(X).
+sneezing(X):0.8 ; null:0.2 :- hay_fever(X).
+flu(bob).
+hay_fever(bob).
+
+% metainterpreter that remembers the subgoals in a list 
+solve(true,[]) :-!.
+solve( (A,B) ,List):-
+    !,
+    solve(A,List1),
+    solve(B,List2),
+	append(List1,List2,List).
+solve(A,[A|List]):-
+    clause(A,B),
+    solve(B,List).
+
+p(X) :- q(X),r(x).
+p(X) :- s(X).
+q(X) :- t(X).
+r(1).
+r(2).
+r(3).
+t(1).
+t(2).
+s(12).
+
+% Returns the number of clauses defining the predicate in the problem
+a(X) :- b(X),c(X). 
+a(X) :- Y is X+1, b(Y),c(Y). 
+a(X) :- Y is X-1, b(Y),c(Y). 
+
+how_many(a(X),Result):-
+    findall(Clause,clause(a(x),Clause),Results),
+    length(Results,Result).
+
+% count the number of solution of a preficate in the DB 
+p(a).
+p(b).
+p(c).
+
+count(p(X),Result):-
+    findall(X,p(X),S),
+    length(S,Result).
+
+
+
